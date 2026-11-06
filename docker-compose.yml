@@ -19,6 +19,15 @@ services:
       - framevault-uploads:/app/apps/web/public/uploads
       - framevault-data:/app/apps/web/.data
 
+  # Cloudflare Quick Tunnel: provides a free, instant HTTPS URL with valid SSL
+  # Required by Figma because Figma runs on HTTPS and blocks insecure HTTP LAN IPs (Mixed Content)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://framevault:3000
+    depends_on:
+      - framevault
+
 volumes:
   framevault-uploads:
     driver: local
