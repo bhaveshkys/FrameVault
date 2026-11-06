@@ -1,13 +1,13 @@
 {
   "name": "FrameVault — Visual Reference Sync",
-  "id": "framevault-visual-references",
+  "id": "1708417661817667321",
   "api": "1.0.0",
   "main": "dist/main.js",
   "ui": "dist/ui.html",
   "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": ["*"],
     "reasoning": "Communicates with FrameVault web backend to synchronize reference cards and video stills into Figma sections."
   }
 }
-
