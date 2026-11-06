@@ -38,3 +38,4 @@ VOLUME ["/app/apps/web/public/uploads", "/app/apps/web/.data"]
 
 WORKDIR /app/apps/web
 CMD ["node_modules/.bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+
