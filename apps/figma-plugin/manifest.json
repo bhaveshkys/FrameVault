@@ -7,7 +7,14 @@
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
   "networkAccess": {
-    "allowedDomains": ["*"],
+    "allowedDomains": [
+      "*"
+    ],
+    "devAllowedDomains": [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://192.168.0.189:3000"
+    ],
     "reasoning": "Communicates with FrameVault web backend to synchronize reference cards and video stills into Figma sections."
   }
 }
