@@ -378,39 +378,38 @@
 
     async function fetchPendingReferences() {
       log(`Connecting to ${configUrl}/api/figma/pending...`);
-      try {
-        const res = await fetch(`${configUrl}/api/figma/pending`, {
-          headers: {
-            'Authorization': `Bearer ${configToken}`
-          }
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `HTTP ${res.status}`);
+      // Ask Figma sandbox (main thread) to fetch first (bypasses iframe DOM mixed content)
+      parent.postMessage({
+        pluginMessage: {
+          type: 'FETCH_PENDING',
+          url: configUrl,
+          token: configToken
         }
+      }, '*');
+    }
 
-        const data = await res.json();
-        currentPending = data.items || [];
-        const pendingBadge = document.getElementById('stat-pending');
-        const syncBtn = document.getElementById('btn-sync');
-        const connBadge = document.getElementById('conn-badge');
+    function handlePendingData(items) {
+      currentPending = items || [];
+      const pendingBadge = document.getElementById('stat-pending');
+      const syncBtn = document.getElementById('btn-sync');
+      const connBadge = document.getElementById('conn-badge');
 
-        if (pendingBadge) pendingBadge.innerText = currentPending.length;
-        if (syncBtn) syncBtn.disabled = currentPending.length === 0;
-        if (connBadge) {
-          connBadge.className = 'status-badge badge-ok';
-          connBadge.innerText = 'Ready';
-        }
+      if (pendingBadge) pendingBadge.innerText = currentPending.length;
+      if (syncBtn) syncBtn.disabled = currentPending.length === 0;
+      if (connBadge) {
+        connBadge.className = 'status-badge badge-ok';
+        connBadge.innerText = 'Ready';
+      }
 
-        log(`✓ Retrieved ${currentPending.length} pending reference(s).`);
-      } catch (err) {
-        log(`✕ Connection failed: ${err.message}`);
-        const connBadge = document.getElementById('conn-badge');
-        if (connBadge) {
-          connBadge.className = 'status-badge badge-error';
-          connBadge.innerText = 'Offline';
-        }
+      log(`✓ Retrieved ${currentPending.length} pending reference(s).`);
+    }
+
+    function handleFetchError(errorMessage) {
+      log(`✕ Connection failed: ${errorMessage}`);
+      const connBadge = document.getElementById('conn-badge');
+      if (connBadge) {
+        connBadge.className = 'status-badge badge-error';
+        connBadge.innerText = 'Offline';
       }
     }
 
@@ -514,38 +513,42 @@
         log('Persistent settings confirmed by Figma.');
       }
 
+      if (msg.type === 'FETCH_PENDING_SUCCESS') {
+        handlePendingData(msg.items);
+      }
+
+      if (msg.type === 'FETCH_PENDING_ERROR') {
+        handleFetchError(msg.error);
+      }
+
       if (msg.type === 'ITEM_PROCESSED') {
-        // Post sync result back to FrameVault backend
-        try {
-          await fetch(`${configUrl}/api/figma/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${configToken}`
-            },
-            body: JSON.stringify({
+        // Post sync result back to FrameVault backend via sandbox
+        parent.postMessage({
+          pluginMessage: {
+            type: 'POST_SYNC_STATUS',
+            url: configUrl,
+            token: configToken,
+            payload: {
               reference_id: msg.reference_id,
               category_id: msg.category_id,
               figma_file_key: 'FRAMEVAULT_REFERENCE_BOARD',
               figma_node_id: msg.figma_node_id || 'unknown',
               status: msg.status,
               last_error: msg.last_error || null
-            })
-          });
-
-          if (msg.status === 'synced') {
-            processedCount++;
-            const syncedStat = document.getElementById('stat-synced');
-            if (syncedStat) syncedStat.innerText = processedCount;
-            log(`✓ Card created (Node: ${msg.figma_node_id})`);
-          } else {
-            failedCount++;
-            const failedStat = document.getElementById('stat-failed');
-            if (failedStat) failedStat.innerText = failedCount;
-            log(`✕ Failed: ${msg.last_error}`);
+            }
           }
-        } catch (e) {
-          log(`Failed to update backend: ${e.message}`);
+        }, '*');
+
+        if (msg.status === 'synced') {
+          processedCount++;
+          const syncedStat = document.getElementById('stat-synced');
+          if (syncedStat) syncedStat.innerText = processedCount;
+          log(`✓ Card created (Node: ${msg.figma_node_id})`);
+        } else {
+          failedCount++;
+          const failedStat = document.getElementById('stat-failed');
+          if (failedStat) failedStat.innerText = failedCount;
+          log(`✕ Failed: ${msg.last_error}`);
         }
 
         // Update progress

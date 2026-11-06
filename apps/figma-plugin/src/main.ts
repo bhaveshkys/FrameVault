@@ -173,6 +173,60 @@ figma.ui.onmessage = async (msg) => {
     return;
   }
 
+  // Network fetch handled in Figma plugin sandbox (bypasses iframe DOM mixed content)
+  if (msg.type === 'FETCH_PENDING') {
+    try {
+      const targetUrl = (msg.url || '').replace(/\/+$/, '');
+      const token = msg.token || '';
+      const response = await fetch(`${targetUrl}/api/figma/pending`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        figma.ui.postMessage({
+          type: 'FETCH_PENDING_ERROR',
+          error: (errJson as any).error || `HTTP ${response.status}: ${response.statusText}`,
+        });
+        return;
+      }
+
+      const data = await response.json();
+      figma.ui.postMessage({
+        type: 'FETCH_PENDING_SUCCESS',
+        items: (data as any).items || [],
+        count: (data as any).count || 0,
+      });
+    } catch (netErr: any) {
+      figma.ui.postMessage({
+        type: 'FETCH_PENDING_ERROR',
+        error: netErr.message || 'Network request failed in sandbox',
+      });
+    }
+    return;
+  }
+
+  if (msg.type === 'POST_SYNC_STATUS') {
+    try {
+      const targetUrl = (msg.url || '').replace(/\/+$/, '');
+      const token = msg.token || '';
+      await fetch(`${targetUrl}/api/figma/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(msg.payload),
+      });
+    } catch (e) {
+      console.error('Failed to post sync status from sandbox:', e);
+    }
+    return;
+  }
+
   if (msg.type === 'CREATE_CARDS') {
     const items: PendingSyncPayload[] = msg.items || [];
     const targetPage = getOrCreateReferencePage();
