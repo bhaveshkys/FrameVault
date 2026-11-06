@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { updateFigmaSyncRecord, validateApiToken } from '@/lib/db';
+import { handleCorsPreflight, jsonWithCors } from '@/lib/cors';
 import { z } from 'zod';
 
 const SyncSchema = z.object({
@@ -11,11 +12,15 @@ const SyncSchema = z.object({
   last_error: z.string().optional().nullable(),
 });
 
+export async function OPTIONS() {
+  return handleCorsPreflight();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      return NextResponse.json(
+      return jsonWithCors(
         { error: 'Missing Authorization header. Expected Bearer <token>' },
         { status: 401 }
       );
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const isValid = await validateApiToken(authHeader);
     if (!isValid) {
-      return NextResponse.json(
+      return jsonWithCors(
         { error: 'Invalid or revoked FrameVault API token' },
         { status: 403 }
       );
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest) {
     const parsed = SyncSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      return jsonWithCors(
         { error: 'Validation failed', details: parsed.error.flatten() },
         { status: 400 }
       );
@@ -41,13 +46,13 @@ export async function POST(req: NextRequest) {
 
     await updateFigmaSyncRecord(parsed.data);
 
-    return NextResponse.json({
+    return jsonWithCors({
       success: true,
       data: parsed.data,
       message: `Synchronized reference ${parsed.data.reference_id} for category ${parsed.data.category_id}`,
     });
   } catch (error: any) {
-    return NextResponse.json(
+    return jsonWithCors(
       { error: error.message || 'Failed to update Figma sync status' },
       { status: 500 }
     );

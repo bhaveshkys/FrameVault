@@ -7,6 +7,26 @@ figma.showUI(__html__, {
   themeColors: true,
 });
 
+// Immediately send stored settings on startup
+async function initPlugin() {
+  try {
+    const savedUrl = (await figma.clientStorage.getAsync('fv_api_url')) || 'http://localhost:3000';
+    const savedToken =
+      (await figma.clientStorage.getAsync('fv_api_token')) ||
+      'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+
+    figma.ui.postMessage({
+      type: 'LOADED_SETTINGS',
+      url: savedUrl,
+      token: savedToken,
+    });
+  } catch (err) {
+    console.error('Failed to load settings from clientStorage:', err);
+  }
+}
+
+initPlugin();
+
 interface PendingSyncPayload {
   reference_id: string;
   category_id: string;
@@ -92,6 +112,39 @@ function getOrCreateCategoryContainer(
 
 // Main message router
 figma.ui.onmessage = async (msg) => {
+  if (msg.type === 'GET_SETTINGS') {
+    const savedUrl = (await figma.clientStorage.getAsync('fv_api_url')) || 'http://localhost:3000';
+    const savedToken =
+      (await figma.clientStorage.getAsync('fv_api_token')) ||
+      'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+
+    figma.ui.postMessage({
+      type: 'LOADED_SETTINGS',
+      url: savedUrl,
+      token: savedToken,
+    });
+    return;
+  }
+
+  if (msg.type === 'SAVE_SETTINGS') {
+    try {
+      await figma.clientStorage.setAsync('fv_api_url', msg.url);
+      await figma.clientStorage.setAsync('fv_api_token', msg.token);
+
+      figma.ui.postMessage({
+        type: 'SETTINGS_SAVED',
+        url: msg.url,
+        token: msg.token,
+      });
+    } catch (err: any) {
+      figma.ui.postMessage({
+        type: 'SETTINGS_SAVE_ERROR',
+        error: err.message,
+      });
+    }
+    return;
+  }
+
   if (msg.type === 'CHECK_CONNECTION') {
     figma.ui.postMessage({
       type: 'CONNECTION_CHECKED',

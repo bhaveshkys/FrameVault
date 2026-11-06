@@ -174,3 +174,4 @@ export function SearchModal({ isOpen, onClose, onSelectReference }: SearchModalP
     </div>
   );
 }
+

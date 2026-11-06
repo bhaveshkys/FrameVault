@@ -43,3 +43,4 @@ export function getDomainFromUrl(url: string | null): string {
     return url;
   }
 }
+

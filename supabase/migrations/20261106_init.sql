@@ -197,3 +197,4 @@ drop trigger if exists tr_on_user_created_seed_categories on auth.users;
 create trigger tr_on_user_created_seed_categories
     after insert on auth.users
     for each row execute function public.seed_default_categories_for_user();
+

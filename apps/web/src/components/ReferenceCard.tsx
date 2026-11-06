@@ -137,3 +137,4 @@ export function ReferenceCard({ reference, onSelect, onToggleFavorite }: Referen
     </div>
   );
 }
+

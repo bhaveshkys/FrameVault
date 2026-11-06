@@ -157,7 +157,7 @@
       background: #161920;
       border: 1px solid #262c37;
       border-radius: 6px;
-      padding: 7px 10px;
+      padding: 8px 10px;
       color: #ffffff;
       font-size: 11px;
       font-family: monospace;
@@ -289,10 +289,10 @@
         <label class="label">Personal Sync Access Token</label>
         <input type="text" id="cfg-token" placeholder="fv_live_...">
         <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">
-          Find or generate this in FrameVault Settings (/settings).
+          Find or copy this in FrameVault Settings (/settings).
         </div>
       </div>
-      <button class="btn" onclick="saveSettings()">Save Configuration</button>
+      <button id="btn-save-cfg" class="btn" onclick="saveSettings()">Save Configuration</button>
     </div>
 
     <div class="card" style="font-size: 11px; color: #9ca3af; line-height: 1.5;">
@@ -302,48 +302,87 @@
   </div>
 
   <script>
+    // In-memory configuration variables (survives tab switches and falls back cleanly)
+    let configUrl = 'http://localhost:3000';
+    let configToken = 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
     let currentPending = [];
     let processedCount = 0;
     let failedCount = 0;
 
-    // Load saved settings
-    const savedUrl = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
-    const savedToken = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
-    document.getElementById('cfg-url').value = savedUrl;
-    document.getElementById('cfg-token').value = savedToken;
-
     function log(msg) {
       const box = document.getElementById('log-box');
+      if (!box) return;
       const time = new Date().toLocaleTimeString();
       box.innerHTML += `<div>[${time}] ${msg}</div>`;
       box.scrollTop = box.scrollHeight;
     }
 
     function switchTab(tab) {
-      document.getElementById('tab-sync').style.display = tab === 'sync' ? 'flex' : 'none';
-      document.getElementById('tab-settings').style.display = tab === 'settings' ? 'flex' : 'none';
-      document.getElementById('tab-sync-btn').className = 'tab-btn ' + (tab === 'sync' ? 'active' : '');
-      document.getElementById('tab-settings-btn').className = 'tab-btn ' + (tab === 'settings' ? 'active' : '');
+      const syncTab = document.getElementById('tab-sync');
+      const settingsTab = document.getElementById('tab-settings');
+      const syncBtn = document.getElementById('tab-sync-btn');
+      const settingsBtn = document.getElementById('tab-settings-btn');
+
+      if (syncTab) syncTab.style.display = tab === 'sync' ? 'flex' : 'none';
+      if (settingsTab) settingsTab.style.display = tab === 'settings' ? 'flex' : 'none';
+      if (syncBtn) syncBtn.className = 'tab-btn ' + (tab === 'sync' ? 'active' : '');
+      if (settingsBtn) settingsBtn.className = 'tab-btn ' + (tab === 'settings' ? 'active' : '');
     }
 
     function saveSettings() {
-      const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
-      const token = document.getElementById('cfg-token').value.trim();
-      localStorage.setItem('fv_api_url', url);
-      localStorage.setItem('fv_api_token', token);
-      log('Settings saved.');
-      switchTab('sync');
-      fetchPendingReferences();
+      const urlInput = document.getElementById('cfg-url');
+      const tokenInput = document.getElementById('cfg-token');
+      const saveBtn = document.getElementById('btn-save-cfg');
+
+      const url = urlInput ? urlInput.value.trim().replace(/\/$/, '') || 'http://localhost:3000' : 'http://localhost:3000';
+      const token = tokenInput ? tokenInput.value.trim() : '';
+
+      configUrl = url;
+      configToken = token;
+
+      // 1. Persist directly to Figma's official clientStorage via sandbox
+      parent.postMessage({
+        pluginMessage: {
+          type: 'SAVE_SETTINGS',
+          url: configUrl,
+          token: configToken
+        }
+      }, '*');
+
+      // 2. Safe localStorage write (caught so it never throws if sandbox disallows)
+      try {
+        localStorage.setItem('fv_api_url', configUrl);
+        localStorage.setItem('fv_api_token', configToken);
+      } catch (e) {
+        // Ignored; figma.clientStorage handles it
+      }
+
+      // Visual button feedback
+      if (saveBtn) {
+        saveBtn.innerText = '✓ Configuration Saved!';
+        saveBtn.style.backgroundColor = '#10b981';
+        setTimeout(() => {
+          saveBtn.innerText = 'Save Configuration';
+          saveBtn.style.backgroundColor = '#6366f1';
+        }, 1500);
+      }
+
+      log('✓ Configuration saved to Figma storage.');
+
+      // Return to Sync tab and fetch pending items
+      setTimeout(() => {
+        switchTab('sync');
+        fetchPendingReferences();
+      }, 300);
     }
 
     async function fetchPendingReferences() {
-      const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
-      const token = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
-
-      log(`Connecting to ${url}/api/figma/pending...`);
+      log(`Connecting to ${configUrl}/api/figma/pending...`);
       try {
-        const res = await fetch(`${url}/api/figma/pending`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`${configUrl}/api/figma/pending`, {
+          headers: {
+            'Authorization': `Bearer ${configToken}`
+          }
         });
 
         if (!res.ok) {
@@ -353,13 +392,25 @@
 
         const data = await res.json();
         currentPending = data.items || [];
-        document.getElementById('stat-pending').innerText = currentPending.length;
-        document.getElementById('btn-sync').disabled = currentPending.length === 0;
+        const pendingBadge = document.getElementById('stat-pending');
+        const syncBtn = document.getElementById('btn-sync');
+        const connBadge = document.getElementById('conn-badge');
+
+        if (pendingBadge) pendingBadge.innerText = currentPending.length;
+        if (syncBtn) syncBtn.disabled = currentPending.length === 0;
+        if (connBadge) {
+          connBadge.className = 'status-badge badge-ok';
+          connBadge.innerText = 'Ready';
+        }
+
         log(`✓ Retrieved ${currentPending.length} pending reference(s).`);
       } catch (err) {
         log(`✕ Connection failed: ${err.message}`);
-        document.getElementById('conn-badge').className = 'status-badge badge-error';
-        document.getElementById('conn-badge').innerText = 'Offline';
+        const connBadge = document.getElementById('conn-badge');
+        if (connBadge) {
+          connBadge.className = 'status-badge badge-error';
+          connBadge.innerText = 'Offline';
+        }
       }
     }
 
@@ -369,27 +420,33 @@
         return;
       }
 
-      document.getElementById('btn-sync').disabled = true;
-      document.getElementById('btn-fetch').disabled = true;
-      document.getElementById('sync-progress-box').style.display = 'block';
+      const syncBtn = document.getElementById('btn-sync');
+      const fetchBtn = document.getElementById('btn-fetch');
+      const progressBox = document.getElementById('sync-progress-box');
+      const progressText = document.getElementById('progress-text');
+      const progressPct = document.getElementById('progress-pct');
+      const progressBar = document.getElementById('progress-bar');
+
+      if (syncBtn) syncBtn.disabled = true;
+      if (fetchBtn) fetchBtn.disabled = true;
+      if (progressBox) progressBox.style.display = 'block';
 
       log(`Starting image downloads for ${currentPending.length} reference(s)...`);
 
-      const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
       const itemsWithBytes = [];
 
       for (let i = 0; i < currentPending.length; i++) {
         const item = currentPending[i];
-        document.getElementById('progress-text').innerText = `Downloading image ${i + 1}/${currentPending.length}`;
-        document.getElementById('progress-pct').innerText = `${Math.round(((i + 1) / currentPending.length) * 50)}%`;
-        document.getElementById('progress-bar').style.width = `${Math.round(((i + 1) / currentPending.length) * 50)}%`;
+        if (progressText) progressText.innerText = `Downloading image ${i + 1}/${currentPending.length}`;
+        const pct = Math.round(((i + 1) / currentPending.length) * 50);
+        if (progressPct) progressPct.innerText = `${pct}%`;
+        if (progressBar) progressBar.style.width = `${pct}%`;
 
         let imageBytes = [];
         try {
-          // Resolve relative or absolute image url
           let imgFullUrl = item.image_url;
           if (imgFullUrl.startsWith('/')) {
-            imgFullUrl = `${url}${imgFullUrl}`;
+            imgFullUrl = `${configUrl}${imgFullUrl}`;
           }
 
           const imgRes = await fetch(imgFullUrl);
@@ -409,7 +466,7 @@
         });
       }
 
-      log('Sending layout instructions to Figma sandbox...');
+      log('Creating category sections and cards in Figma...');
       parent.postMessage({
         pluginMessage: {
           type: 'CREATE_CARDS',
@@ -423,17 +480,33 @@
       const msg = event.data?.pluginMessage;
       if (!msg) return;
 
-      if (msg.type === 'ITEM_PROCESSED') {
-        const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
-        const token = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+      if (msg.type === 'LOADED_SETTINGS') {
+        if (msg.url) {
+          configUrl = msg.url;
+          const urlInput = document.getElementById('cfg-url');
+          if (urlInput) urlInput.value = msg.url;
+        }
+        if (msg.token) {
+          configToken = msg.token;
+          const tokenInput = document.getElementById('cfg-token');
+          if (tokenInput) tokenInput.value = msg.token;
+        }
+        log('Loaded stored settings from Figma.');
+        fetchPendingReferences();
+      }
 
+      if (msg.type === 'SETTINGS_SAVED') {
+        log('Persistent settings confirmed by Figma.');
+      }
+
+      if (msg.type === 'ITEM_PROCESSED') {
         // Post sync result back to FrameVault backend
         try {
-          await fetch(`${url}/api/figma/sync`, {
+          await fetch(`${configUrl}/api/figma/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
+              'Authorization': `Bearer ${configToken}`
             },
             body: JSON.stringify({
               reference_id: msg.reference_id,
@@ -447,11 +520,13 @@
 
           if (msg.status === 'synced') {
             processedCount++;
-            document.getElementById('stat-synced').innerText = processedCount;
+            const syncedStat = document.getElementById('stat-synced');
+            if (syncedStat) syncedStat.innerText = processedCount;
             log(`✓ Card created (Node: ${msg.figma_node_id})`);
           } else {
             failedCount++;
-            document.getElementById('stat-failed').innerText = failedCount;
+            const failedStat = document.getElementById('stat-failed');
+            if (failedStat) failedStat.innerText = failedCount;
             log(`✕ Failed: ${msg.last_error}`);
           }
         } catch (e) {
@@ -462,13 +537,18 @@
         const total = currentPending.length;
         const finished = processedCount + failedCount;
         const pct = Math.round(50 + (finished / total) * 50);
-        document.getElementById('progress-bar').style.width = `${pct}%`;
-        document.getElementById('progress-pct').innerText = `${pct}%`;
+        const progressBar = document.getElementById('progress-bar');
+        const progressPct = document.getElementById('progress-pct');
+
+        if (progressBar) progressBar.style.width = `${pct}%`;
+        if (progressPct) progressPct.innerText = `${pct}%`;
 
         if (finished >= total) {
           log('🎉 All reference cards synchronized successfully!');
-          document.getElementById('btn-sync').disabled = false;
-          document.getElementById('btn-fetch').disabled = false;
+          const syncBtn = document.getElementById('btn-sync');
+          const fetchBtn = document.getElementById('btn-fetch');
+          if (syncBtn) syncBtn.disabled = false;
+          if (fetchBtn) fetchBtn.disabled = false;
           setTimeout(() => {
             fetchPendingReferences();
           }, 1000);
@@ -476,8 +556,8 @@
       }
     };
 
-    // Auto-fetch on plugin launch
-    fetchPendingReferences();
+    // Request stored settings from Figma clientStorage as soon as iframe mounts
+    parent.postMessage({ pluginMessage: { type: 'GET_SETTINGS' } }, '*');
   </script>
 </body>
 </html>

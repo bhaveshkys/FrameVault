@@ -60,3 +60,4 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
     </div>
   );
 }
+

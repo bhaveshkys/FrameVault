@@ -123,6 +123,18 @@
   ],
   "references": [
     {
+      "id": "ref-c3f63f31",
+      "user_id": "00000000-0000-0000-0000-000000000000",
+      "title": "victorian style",
+      "source_url": "https://youtu.be/5s32duTy_ic?t=314",
+      "image_path": "/uploads/502039f0-53c5-4949-929c-d10ac18c3440.png",
+      "notes": null,
+      "is_favorite": false,
+      "created_at": "2026-11-06T05:23:02.567Z",
+      "updated_at": "2026-11-06T05:23:02.567Z",
+      "categories": []
+    },
+    {
       "id": "ref-35241292",
       "user_id": "00000000-0000-0000-0000-000000000000",
       "title": "Match Cut on Action — Red Bull Racing Pit Stop",
@@ -366,6 +378,11 @@
       "reference_id": "ref-35241292",
       "category_id": "cat-12",
       "created_at": "2026-11-06T05:05:31.626Z"
+    },
+    {
+      "reference_id": "ref-c3f63f31",
+      "category_id": "cat-15",
+      "created_at": "2026-11-06T05:23:02.567Z"
     }
   ],
   "figma_sync": [
@@ -550,6 +567,19 @@
       "synced_at": null,
       "created_at": "2026-11-06T05:05:31.626Z",
       "updated_at": "2026-11-06T05:05:31.626Z"
+    },
+    {
+      "id": "sync-71ce4d73",
+      "reference_id": "ref-c3f63f31",
+      "category_id": "cat-15",
+      "category_name": "Historical Visuals",
+      "figma_file_key": null,
+      "figma_node_id": null,
+      "status": "pending",
+      "last_error": null,
+      "synced_at": null,
+      "created_at": "2026-11-06T05:23:02.567Z",
+      "updated_at": "2026-11-06T05:23:02.567Z"
     }
   ],
   "api_tokens": [
@@ -558,7 +588,7 @@
       "user_id": "00000000-0000-0000-0000-000000000000",
       "name": "Default Figma Plugin Token",
       "token": "fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b",
-      "last_used_at": "2026-11-06T05:05:24.604Z",
+      "last_used_at": "2026-11-06T05:31:34.412Z",
       "created_at": "2026-11-06T05:04:39.069Z"
     }
   ]

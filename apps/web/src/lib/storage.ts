@@ -72,3 +72,4 @@ export async function uploadScreenshot(
     url: `/uploads/${filename}`,
   };
 }
+

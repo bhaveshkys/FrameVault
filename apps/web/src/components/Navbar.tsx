@@ -146,3 +146,4 @@ export function Navbar({ onOpenCapture, onOpenSearch, onOpenShortcuts }: NavbarP
     </header>
   );
 }
+

@@ -25,3 +25,4 @@ BEGIN
         ON CONFLICT DO NOTHING;
     END IF;
 END $$;
+

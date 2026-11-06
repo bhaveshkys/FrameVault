@@ -68,3 +68,4 @@ export interface FigmaSyncRequest {
   status: FigmaSyncStatus;
   last_error?: string | null;
 }
+
