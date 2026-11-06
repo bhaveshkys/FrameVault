@@ -1,0 +1,15 @@
+{
+  "name": "framevault-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build && pnpm --filter figma-plugin build",
+    "lint": "pnpm --filter web lint",
+    "build:plugin": "pnpm --filter figma-plugin build",
+    "watch:plugin": "pnpm --filter figma-plugin watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

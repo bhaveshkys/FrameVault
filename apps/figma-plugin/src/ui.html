@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>FrameVault Figma Sync</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #090a0c;
+      color: #f3f4f6;
+      font-size: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1f232b;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-badge {
+      width: 24px;
+      height: 24px;
+      background: #6366f1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 11px;
+      color: #ffffff;
+    }
+    .title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #12141a;
+      padding: 3px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      border: 1px solid #1f232b;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 6px 10px;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #1e222b;
+      color: #ffffff;
+    }
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card {
+      background: #111317;
+      border: 1px solid #20242c;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .stat-box {
+      background: #161920;
+      border: 1px solid #232733;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .stat-label {
+      font-size: 9px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+    .btn {
+      background: #6366f1;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      transition: all 0.15s;
+    }
+    .btn:hover {
+      background: #4f46e5;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #181b22;
+      border: 1px solid #2b313d;
+      color: #d1d5db;
+    }
+    .btn-secondary:hover {
+      background: #20242d;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .label {
+      font-size: 10px;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    input[type="text"] {
+      background: #161920;
+      border: 1px solid #262c37;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #ffffff;
+      font-size: 11px;
+      font-family: monospace;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: #6366f1;
+    }
+    .log-box {
+      background: #0d0e12;
+      border: 1px solid #1a1d24;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 10px;
+      color: #9ca3af;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .badge-ok {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-error {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 4px;
+      background: #1e222b;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #6366f1;
+      width: 0%;
+      transition: width 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo-badge">FV</div>
+      <div>
+        <div class="title">FrameVault Sync</div>
+        <div style="font-size: 9px; color: #6b7280;">Canvas Visual Reference Engine</div>
+      </div>
+    </div>
+    <div id="conn-badge" class="status-badge badge-ok">Ready</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button id="tab-sync-btn" class="tab-btn active" onclick="switchTab('sync')">Sync Engine</button>
+    <button id="tab-settings-btn" class="tab-btn" onclick="switchTab('settings')">Settings</button>
+  </div>
+
+  <!-- Content Area: Sync -->
+  <div id="tab-sync" class="content-area">
+    <div class="card">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div id="stat-pending" class="stat-value" style="color: #fbbf24;">0</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-box">
+          <div id="stat-synced" class="stat-value" style="color: #34d399;">0</div>
+          <div class="stat-label">Synced</div>
+        </div>
+        <div class="stat-box">
+          <div id="stat-failed" class="stat-value" style="color: #f87171;">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+      <div id="sync-progress-box" style="display: none; margin-top: 10px;">
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af;">
+          <span id="progress-text">Processing...</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <button id="btn-fetch" class="btn btn-secondary" onclick="fetchPendingReferences()">
+        ↻ Check For Pending References
+      </button>
+      <button id="btn-sync" class="btn" onclick="startSynchronization()">
+        ⚡ Sync All to "FrameVault References"
+      </button>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="card" style="margin-top: auto;">
+      <div style="font-size: 10px; font-weight: 600; color: #9ca3af; margin-bottom: 6px;">ACTIVITY LOG</div>
+      <div id="log-box" class="log-box">
+        FrameVault plugin initialized.<br>
+        Awaiting command...
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Area: Settings -->
+  <div id="tab-settings" class="content-area" style="display: none;">
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="input-group">
+        <label class="label">FrameVault Backend URL</label>
+        <input type="text" id="cfg-url" value="http://localhost:3000">
+      </div>
+      <div class="input-group">
+        <label class="label">Personal Sync Access Token</label>
+        <input type="text" id="cfg-token" placeholder="fv_live_...">
+        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">
+          Find or generate this in FrameVault Settings (/settings).
+        </div>
+      </div>
+      <button class="btn" onclick="saveSettings()">Save Configuration</button>
+    </div>
+
+    <div class="card" style="font-size: 11px; color: #9ca3af; line-height: 1.5;">
+      <strong>Canvas Target:</strong><br>
+      The plugin automatically creates or connects to a dedicated Figma page named <code>FrameVault References</code>, separating video stills by category sections.
+    </div>
+  </div>
+
+  <script>
+    let currentPending = [];
+    let processedCount = 0;
+    let failedCount = 0;
+
+    // Load saved settings
+    const savedUrl = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
+    const savedToken = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+    document.getElementById('cfg-url').value = savedUrl;
+    document.getElementById('cfg-token').value = savedToken;
+
+    function log(msg) {
+      const box = document.getElementById('log-box');
+      const time = new Date().toLocaleTimeString();
+      box.innerHTML += `<div>[${time}] ${msg}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function switchTab(tab) {
+      document.getElementById('tab-sync').style.display = tab === 'sync' ? 'flex' : 'none';
+      document.getElementById('tab-settings').style.display = tab === 'settings' ? 'flex' : 'none';
+      document.getElementById('tab-sync-btn').className = 'tab-btn ' + (tab === 'sync' ? 'active' : '');
+      document.getElementById('tab-settings-btn').className = 'tab-btn ' + (tab === 'settings' ? 'active' : '');
+    }
+
+    function saveSettings() {
+      const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+      const token = document.getElementById('cfg-token').value.trim();
+      localStorage.setItem('fv_api_url', url);
+      localStorage.setItem('fv_api_token', token);
+      log('Settings saved.');
+      switchTab('sync');
+      fetchPendingReferences();
+    }
+
+    async function fetchPendingReferences() {
+      const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
+      const token = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+
+      log(`Connecting to ${url}/api/figma/pending...`);
+      try {
+        const res = await fetch(`${url}/api/figma/pending`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        currentPending = data.items || [];
+        document.getElementById('stat-pending').innerText = currentPending.length;
+        document.getElementById('btn-sync').disabled = currentPending.length === 0;
+        log(`✓ Retrieved ${currentPending.length} pending reference(s).`);
+      } catch (err) {
+        log(`✕ Connection failed: ${err.message}`);
+        document.getElementById('conn-badge').className = 'status-badge badge-error';
+        document.getElementById('conn-badge').innerText = 'Offline';
+      }
+    }
+
+    async function startSynchronization() {
+      if (currentPending.length === 0) {
+        log('No pending references to sync.');
+        return;
+      }
+
+      document.getElementById('btn-sync').disabled = true;
+      document.getElementById('btn-fetch').disabled = true;
+      document.getElementById('sync-progress-box').style.display = 'block';
+
+      log(`Starting image downloads for ${currentPending.length} reference(s)...`);
+
+      const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
+      const itemsWithBytes = [];
+
+      for (let i = 0; i < currentPending.length; i++) {
+        const item = currentPending[i];
+        document.getElementById('progress-text').innerText = `Downloading image ${i + 1}/${currentPending.length}`;
+        document.getElementById('progress-pct').innerText = `${Math.round(((i + 1) / currentPending.length) * 50)}%`;
+        document.getElementById('progress-bar').style.width = `${Math.round(((i + 1) / currentPending.length) * 50)}%`;
+
+        let imageBytes = [];
+        try {
+          // Resolve relative or absolute image url
+          let imgFullUrl = item.image_url;
+          if (imgFullUrl.startsWith('/')) {
+            imgFullUrl = `${url}${imgFullUrl}`;
+          }
+
+          const imgRes = await fetch(imgFullUrl);
+          if (imgRes.ok) {
+            const buffer = await imgRes.arrayBuffer();
+            imageBytes = Array.from(new Uint8Array(buffer));
+          } else {
+            log(`⚠ Could not download image for "${item.title}"`);
+          }
+        } catch (e) {
+          log(`⚠ Image fetch error: ${e.message}`);
+        }
+
+        itemsWithBytes.push({
+          ...item,
+          imageBytes
+        });
+      }
+
+      log('Sending layout instructions to Figma sandbox...');
+      parent.postMessage({
+        pluginMessage: {
+          type: 'CREATE_CARDS',
+          items: itemsWithBytes
+        }
+      }, '*');
+    }
+
+    // Listen to messages from Figma main sandbox
+    window.onmessage = async (event) => {
+      const msg = event.data?.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'ITEM_PROCESSED') {
+        const url = localStorage.getItem('fv_api_url') || 'http://localhost:3000';
+        const token = localStorage.getItem('fv_api_token') || 'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
+
+        // Post sync result back to FrameVault backend
+        try {
+          await fetch(`${url}/api/figma/sync`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              reference_id: msg.reference_id,
+              category_id: msg.category_id,
+              figma_file_key: 'FRAMEVAULT_REFERENCE_BOARD',
+              figma_node_id: msg.figma_node_id || 'unknown',
+              status: msg.status,
+              last_error: msg.last_error || null
+            })
+          });
+
+          if (msg.status === 'synced') {
+            processedCount++;
+            document.getElementById('stat-synced').innerText = processedCount;
+            log(`✓ Card created (Node: ${msg.figma_node_id})`);
+          } else {
+            failedCount++;
+            document.getElementById('stat-failed').innerText = failedCount;
+            log(`✕ Failed: ${msg.last_error}`);
+          }
+        } catch (e) {
+          log(`Failed to update backend: ${e.message}`);
+        }
+
+        // Update progress
+        const total = currentPending.length;
+        const finished = processedCount + failedCount;
+        const pct = Math.round(50 + (finished / total) * 50);
+        document.getElementById('progress-bar').style.width = `${pct}%`;
+        document.getElementById('progress-pct').innerText = `${pct}%`;
+
+        if (finished >= total) {
+          log('🎉 All reference cards synchronized successfully!');
+          document.getElementById('btn-sync').disabled = false;
+          document.getElementById('btn-fetch').disabled = false;
+          setTimeout(() => {
+            fetchPendingReferences();
+          }, 1000);
+        }
+      }
+    };
+
+    // Auto-fetch on plugin launch
+    fetchPendingReferences();
+  </script>
+</body>
+</html>
