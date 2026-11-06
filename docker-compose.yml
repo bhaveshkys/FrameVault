@@ -1,0 +1,26 @@
+services:
+  framevault:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: framevault
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - FRAMEVAULT_API_URL=http://localhost:3000
+      # Optional: connect your remote Supabase instance
+      # - NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+      # - NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+      # - SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+    volumes:
+      - framevault-uploads:/app/apps/web/public/uploads
+      - framevault-data:/app/apps/web/.data
+
+volumes:
+  framevault-uploads:
+    driver: local
+  framevault-data:
+    driver: local
