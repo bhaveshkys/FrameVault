@@ -431,38 +431,53 @@
       if (fetchBtn) fetchBtn.disabled = true;
       if (progressBox) progressBox.style.display = 'block';
 
-      log(`Starting image downloads for ${currentPending.length} reference(s)...`);
+      log(`Starting image processing for ${currentPending.length} reference(s)...`);
 
       const itemsWithBytes = [];
 
       for (let i = 0; i < currentPending.length; i++) {
         const item = currentPending[i];
-        if (progressText) progressText.innerText = `Downloading image ${i + 1}/${currentPending.length}`;
+        if (progressText) progressText.innerText = `Preparing image ${i + 1}/${currentPending.length}`;
         const pct = Math.round(((i + 1) / currentPending.length) * 50);
         if (progressPct) progressPct.innerText = `${pct}%`;
         if (progressBar) progressBar.style.width = `${pct}%`;
 
-        let imageBytes = [];
-        try {
-          let imgFullUrl = item.image_url;
-          if (imgFullUrl.startsWith('/')) {
-            imgFullUrl = `${configUrl}${imgFullUrl}`;
-          }
+        let base64 = item.image_base64 || null;
 
-          const imgRes = await fetch(imgFullUrl);
-          if (imgRes.ok) {
-            const buffer = await imgRes.arrayBuffer();
-            imageBytes = Array.from(new Uint8Array(buffer));
-          } else {
-            log(`⚠ Could not download image for "${item.title}"`);
+        // If backend did not pre-resolve base64, fetch via CORS-enabled image endpoint
+        if (!base64 && item.image_url) {
+          try {
+            let fetchUrl = item.image_url;
+            if (fetchUrl.startsWith('/uploads/') || fetchUrl.startsWith('uploads/')) {
+              fetchUrl = `${configUrl}/api/figma/image/${item.reference_id}`;
+            } else if (fetchUrl.startsWith('/')) {
+              fetchUrl = `${configUrl}${fetchUrl}`;
+            }
+
+            log(`Fetching image for "${item.title}"...`);
+            const imgRes = await fetch(fetchUrl);
+            if (imgRes.ok) {
+              const blob = await imgRes.blob();
+              base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              log(`✓ Image ready (${Math.round(blob.size / 1024)} KB)`);
+            } else {
+              log(`⚠ Image server returned HTTP ${imgRes.status}`);
+            }
+          } catch (e) {
+            log(`⚠ Image fetch error: ${e.message}`);
           }
-        } catch (e) {
-          log(`⚠ Image fetch error: ${e.message}`);
+        } else if (base64) {
+          log(`✓ Image pre-loaded for "${item.title}"`);
         }
 
         itemsWithBytes.push({
           ...item,
-          imageBytes
+          image_base64: base64
         });
       }
 

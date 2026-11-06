@@ -123,15 +123,15 @@
   ],
   "references": [
     {
-      "id": "ref-c3f63f31",
+      "id": "ref-8a4eb4b3",
       "user_id": "00000000-0000-0000-0000-000000000000",
-      "title": "victorian style",
+      "title": "Visual Still — 11:08 AM",
       "source_url": "https://youtu.be/5s32duTy_ic?t=314",
-      "image_path": "/uploads/502039f0-53c5-4949-929c-d10ac18c3440.png",
-      "notes": null,
+      "image_path": "/uploads/99086267-dec6-4b30-ad17-7237c140b0d3.png",
+      "notes": "testing 1 2 3",
       "is_favorite": false,
-      "created_at": "2026-11-06T05:23:02.567Z",
-      "updated_at": "2026-11-06T05:23:02.567Z",
+      "created_at": "2026-11-06T05:38:35.074Z",
+      "updated_at": "2026-11-06T05:38:35.074Z",
       "categories": []
     },
     {
@@ -380,9 +380,9 @@
       "created_at": "2026-11-06T05:05:31.626Z"
     },
     {
-      "reference_id": "ref-c3f63f31",
+      "reference_id": "ref-8a4eb4b3",
       "category_id": "cat-15",
-      "created_at": "2026-11-06T05:23:02.567Z"
+      "created_at": "2026-11-06T05:38:35.074Z"
     }
   ],
   "figma_sync": [
@@ -430,13 +430,13 @@
       "reference_id": "ref-2",
       "category_id": "cat-4",
       "category_name": "Motion Graphics",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:4",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.822Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.822Z"
     },
     {
       "id": "sync-5",
@@ -456,130 +456,130 @@
       "reference_id": "ref-3",
       "category_id": "cat-7",
       "category_name": "Transitions",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:12",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.816Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.816Z"
     },
     {
       "id": "sync-7",
       "reference_id": "ref-3",
       "category_id": "cat-9",
       "category_name": "Documentary Editing",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:20",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.816Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.816Z"
     },
     {
       "id": "sync-8",
       "reference_id": "ref-3",
       "category_id": "cat-14",
       "category_name": "Editing Techniques",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:28",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.818Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.818Z"
     },
     {
       "id": "sync-9",
       "reference_id": "ref-4",
       "category_id": "cat-8",
       "category_name": "Sound Design",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:36",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.822Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.822Z"
     },
     {
       "id": "sync-10",
       "reference_id": "ref-4",
       "category_id": "cat-11",
       "category_name": "UI & Interface",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:44",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.822Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.822Z"
     },
     {
       "id": "sync-11",
       "reference_id": "ref-5",
       "category_id": "cat-10",
       "category_name": "Product Advertising",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:52",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.823Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.823Z"
     },
     {
       "id": "sync-12",
       "reference_id": "ref-5",
       "category_id": "cat-12",
       "category_name": "Color Grading",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:60",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.824Z",
       "created_at": "2026-11-06T05:04:39.069Z",
-      "updated_at": "2026-11-06T05:04:39.069Z"
+      "updated_at": "2026-11-06T05:34:06.824Z"
     },
     {
       "id": "sync-0c5c1d2a",
       "reference_id": "ref-35241292",
       "category_id": "cat-6",
       "category_name": "Cinematic Composition",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:74",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.827Z",
       "created_at": "2026-11-06T05:05:31.626Z",
-      "updated_at": "2026-11-06T05:05:31.626Z"
+      "updated_at": "2026-11-06T05:34:06.827Z"
     },
     {
       "id": "sync-46df1d8a",
       "reference_id": "ref-35241292",
       "category_id": "cat-12",
       "category_name": "Color Grading",
-      "figma_file_key": null,
-      "figma_node_id": null,
-      "status": "pending",
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "98:67",
+      "status": "synced",
       "last_error": null,
-      "synced_at": null,
+      "synced_at": "2026-11-06T05:34:06.825Z",
       "created_at": "2026-11-06T05:05:31.626Z",
-      "updated_at": "2026-11-06T05:05:31.626Z"
+      "updated_at": "2026-11-06T05:34:06.825Z"
     },
     {
-      "id": "sync-71ce4d73",
-      "reference_id": "ref-c3f63f31",
+      "id": "sync-cfa11a13",
+      "reference_id": "ref-8a4eb4b3",
       "category_id": "cat-15",
       "category_name": "Historical Visuals",
-      "figma_file_key": null,
-      "figma_node_id": null,
+      "figma_file_key": "FRAMEVAULT_REFERENCE_BOARD",
+      "figma_node_id": "99:86",
       "status": "pending",
       "last_error": null,
       "synced_at": null,
-      "created_at": "2026-11-06T05:23:02.567Z",
-      "updated_at": "2026-11-06T05:23:02.567Z"
+      "created_at": "2026-11-06T05:38:35.074Z",
+      "updated_at": "2026-11-06T05:43:52.262Z"
     }
   ],
   "api_tokens": [
@@ -588,7 +588,7 @@
       "user_id": "00000000-0000-0000-0000-000000000000",
       "name": "Default Figma Plugin Token",
       "token": "fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b",
-      "last_used_at": "2026-11-06T05:31:34.412Z",
+      "last_used_at": "2026-11-06T05:44:02.383Z",
       "created_at": "2026-11-06T05:04:39.069Z"
     }
   ]

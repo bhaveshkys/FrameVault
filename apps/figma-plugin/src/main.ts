@@ -35,7 +35,8 @@ interface PendingSyncPayload {
   title: string;
   source_url?: string | null;
   notes?: string | null;
-  imageBytes: number[]; // Uint8Array serialized as number array
+  image_base64?: string | null;
+  imageBytes?: number[] | Uint8Array | null;
 }
 
 // Convert Hex string to Figma RGB (0-1)
@@ -53,6 +54,28 @@ function hexToRgb(hex?: string | null): RGB {
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
   return { r: r / 255, g: g / 255, b: b / 255 };
+}
+
+// Convert image payload to Uint8Array
+function getUint8ArrayFromItem(item: PendingSyncPayload): Uint8Array | null {
+  if (item.image_base64) {
+    try {
+      const clean = item.image_base64.replace(/^data:image\/[a-zA-Z0-9-.+]+;base64,/, '').trim();
+      const binary = atob(clean);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    } catch (e) {
+      console.error('Failed to decode base64 in sandbox:', e);
+    }
+  }
+  if (item.imageBytes && item.imageBytes.length > 0) {
+    return new Uint8Array(item.imageBytes);
+  }
+  return null;
 }
 
 // Helper to find or create the target page
@@ -74,7 +97,6 @@ function getOrCreateCategoryContainer(
 ): FrameNode | SectionNode {
   const containerName = `Section: ${categoryName}`;
 
-  // Check if existing section/frame exists on this page
   let container = page.children.find((n) => n.name === containerName) as
     | FrameNode
     | SectionNode
@@ -82,11 +104,9 @@ function getOrCreateCategoryContainer(
 
   if (container) return container;
 
-  // Position categories horizontally spaced
   const sectionX = categoryIndex * 900;
   const sectionY = 0;
 
-  // Use Figma Section if available in environment, otherwise Frame
   if (typeof (figma as any).createSection === 'function') {
     const section = (figma as any).createSection() as SectionNode;
     section.name = containerName;
@@ -164,7 +184,6 @@ figma.ui.onmessage = async (msg) => {
       figma.loadFontAsync({ family: 'Inter', style: 'Medium' }),
       figma.loadFontAsync({ family: 'Inter', style: 'Bold' }),
     ]).catch(async () => {
-      // Fallback font if Inter is not locally installed
       await figma.loadFontAsync({ family: 'Roboto', style: 'Regular' });
     });
 
@@ -183,7 +202,6 @@ figma.ui.onmessage = async (msg) => {
       const container = getOrCreateCategoryContainer(targetPage, categoryName, catIndex);
       catIndex++;
 
-      // Layout cards inside container
       const cardsPerRow = 2;
       const cardWidth = 360;
       const cardSpacing = 24;
@@ -197,23 +215,46 @@ figma.ui.onmessage = async (msg) => {
         // 1. Duplicate check: look for card with this sync_key
         const existingNode = container.children.find(
           (c) => c.getPluginData('framevault:sync_key') === syncKey
-        );
+        ) as FrameNode | undefined;
 
         if (existingNode) {
-          // Card already exists on canvas! Report synced with existing node ID
+          // If existing card is missing its image still, attach it now
+          const hasImage = existingNode.children && existingNode.children.some((c) => c.name === 'Screenshot Still');
+          const imageUint8 = getUint8ArrayFromItem(item);
+
+          if (!hasImage && imageUint8 && imageUint8.length > 0) {
+            try {
+              const figmaImg = figma.createImage(imageUint8);
+              const imgRect = figma.createRectangle();
+              imgRect.name = 'Screenshot Still';
+              imgRect.resize(332, 186);
+              imgRect.cornerRadius = 6;
+              imgRect.fills = [
+                {
+                  type: 'IMAGE',
+                  scaleMode: 'FILL',
+                  imageHash: figmaImg.hash,
+                },
+              ];
+              // Insert image at the top of the card
+              existingNode.insertChild(0, imgRect);
+            } catch (fillErr) {
+              console.error('Error attaching image to existing card:', fillErr);
+            }
+          }
+
           figma.ui.postMessage({
             type: 'ITEM_PROCESSED',
             reference_id: item.reference_id,
             category_id: item.category_id,
             figma_node_id: existingNode.id,
             status: 'synced',
-            message: 'Card already exists; skipped duplicate.',
+            message: 'Card updated.',
           });
           continue;
         }
 
         try {
-          // Calculate grid position
           const col = i % cardsPerRow;
           const row = Math.floor(i / cardsPerRow);
           const posX = startX + col * (cardWidth + cardSpacing);
@@ -241,8 +282,8 @@ figma.ui.onmessage = async (msg) => {
           card.itemSpacing = 10;
 
           // 3. Create Screenshot Image Fill
-          if (item.imageBytes && item.imageBytes.length > 0) {
-            const imageUint8 = new Uint8Array(item.imageBytes);
+          const imageUint8 = getUint8ArrayFromItem(item);
+          if (imageUint8 && imageUint8.length > 0) {
             const figmaImg = figma.createImage(imageUint8);
 
             const imgRect = figma.createRectangle();
@@ -297,7 +338,6 @@ figma.ui.onmessage = async (msg) => {
             sourceText.fontName = { family: 'Inter', style: 'Regular' };
             sourceText.fills = [{ type: 'SOLID', color: { r: 0.45, g: 0.55, b: 0.95 } }];
             sourceText.layoutAlign = 'STRETCH';
-            // Attach Figma hyperlink
             sourceText.setRangeHyperlink(0, sourceText.characters.length, {
               type: 'URL',
               value: item.source_url,
@@ -324,7 +364,6 @@ figma.ui.onmessage = async (msg) => {
           container.appendChild(card);
           createdNodes.push(card);
 
-          // Notify UI of successful creation
           figma.ui.postMessage({
             type: 'ITEM_PROCESSED',
             reference_id: item.reference_id,

@@ -55,6 +55,7 @@ export interface FigmaPendingItem {
   title: string;
   source_url: string | null;
   image_url: string;
+  image_base64?: string | null;
   notes: string | null;
   existing_node_id: string | null;
   created_at: string;
@@ -68,4 +69,3 @@ export interface FigmaSyncRequest {
   status: FigmaSyncStatus;
   last_error?: string | null;
 }
-

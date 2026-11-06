@@ -725,6 +725,24 @@ export async function deleteReference(id: string): Promise<boolean> {
 
 // ==================== FIGMA SYNC ====================
 
+async function resolveImageBase64(imagePath: string): Promise<string | null> {
+  try {
+    if (imagePath.startsWith('data:image/')) {
+      return imagePath;
+    }
+    if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
+      const cleanPath = imagePath.replace(/^\//, '');
+      const fullPath = path.join(process.cwd(), 'public', cleanPath);
+      const buf = await fs.readFile(fullPath);
+      const ext = path.extname(cleanPath).replace('.', '') || 'png';
+      return `data:image/${ext};base64,${buf.toString('base64')}`;
+    }
+  } catch (err) {
+    console.warn('Could not read image file for base64:', err);
+  }
+  return null;
+}
+
 export async function getFigmaPendingItems(): Promise<FigmaPendingItem[]> {
   const admin = createAdminClient();
   const supabase = admin || (await createServerSupabaseClient());
@@ -743,18 +761,25 @@ export async function getFigmaPendingItems(): Promise<FigmaPendingItem[]> {
         .eq('status', 'pending');
 
       if (!error && data) {
-        return data.map((item: any) => ({
-          reference_id: item.reference_id,
-          category_id: item.category_id,
-          category_name: item.categories?.name || 'Uncategorized',
-          category_color: item.categories?.color || null,
-          title: item.references?.title || 'Untitled Reference',
-          source_url: item.references?.source_url || null,
-          image_url: item.references?.image_path || '',
-          notes: item.references?.notes || null,
-          existing_node_id: item.figma_node_id || null,
-          created_at: item.created_at,
-        }));
+        return Promise.all(
+          data.map(async (item: any) => {
+            const imgPath = item.references?.image_path || '';
+            const b64 = await resolveImageBase64(imgPath);
+            return {
+              reference_id: item.reference_id,
+              category_id: item.category_id,
+              category_name: item.categories?.name || 'Uncategorized',
+              category_color: item.categories?.color || null,
+              title: item.references?.title || 'Untitled Reference',
+              source_url: item.references?.source_url || null,
+              image_url: imgPath,
+              image_base64: b64,
+              notes: item.references?.notes || null,
+              existing_node_id: item.figma_node_id || null,
+              created_at: item.created_at,
+            };
+          })
+        );
       }
     } catch (e) {
       console.warn('Supabase getFigmaPendingItems error, fallback to local', e);
@@ -764,22 +789,28 @@ export async function getFigmaPendingItems(): Promise<FigmaPendingItem[]> {
   const store = await getLocalStore();
   const pendingSyncs = store.figma_sync.filter((fs) => fs.status === 'pending');
 
-  return pendingSyncs.map((sync) => {
-    const ref = store.references.find((r) => r.id === sync.reference_id);
-    const cat = store.categories.find((c) => c.id === sync.category_id);
-    return {
-      reference_id: sync.reference_id,
-      category_id: sync.category_id,
-      category_name: cat?.name || 'Uncategorized',
-      category_color: cat?.color || null,
-      title: ref?.title || 'Untitled Reference',
-      source_url: ref?.source_url || null,
-      image_url: ref?.image_path || '',
-      notes: ref?.notes || null,
-      existing_node_id: sync.figma_node_id || null,
-      created_at: sync.created_at,
-    };
-  });
+  return Promise.all(
+    pendingSyncs.map(async (sync) => {
+      const ref = store.references.find((r) => r.id === sync.reference_id);
+      const cat = store.categories.find((c) => c.id === sync.category_id);
+      const imgPath = ref?.image_path || '';
+      const b64 = await resolveImageBase64(imgPath);
+
+      return {
+        reference_id: sync.reference_id,
+        category_id: sync.category_id,
+        category_name: cat?.name || 'Uncategorized',
+        category_color: cat?.color || null,
+        title: ref?.title || 'Untitled Reference',
+        source_url: ref?.source_url || null,
+        image_url: imgPath,
+        image_base64: b64,
+        notes: ref?.notes || null,
+        existing_node_id: sync.figma_node_id || null,
+        created_at: sync.created_at,
+      };
+    })
+  );
 }
 
 export async function updateFigmaSyncRecord(params: {
