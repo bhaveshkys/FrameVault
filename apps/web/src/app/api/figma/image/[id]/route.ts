@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getReferenceById } from '@/lib/db';
 import { corsHeaders, handleCorsPreflight } from '@/lib/cors';
 import fs from 'fs/promises';
@@ -17,16 +17,17 @@ export async function GET(
     const ref = await getReferenceById(id);
 
     if (!ref || !ref.image_path) {
-      return new NextResponse('Image not found', { status: 404, headers: corsHeaders });
+      return new Response('Image not found', { status: 404, headers: corsHeaders });
     }
 
-    let buffer: Buffer;
+    let arrayBuffer: ArrayBuffer;
     let contentType = 'image/png';
 
     if (ref.image_path.startsWith('/uploads/') || ref.image_path.startsWith('uploads/')) {
       const cleanPath = ref.image_path.replace(/^\//, '');
       const fullPath = path.join(process.cwd(), 'public', cleanPath);
-      buffer = await fs.readFile(fullPath);
+      const buffer = await fs.readFile(fullPath);
+      arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
       if (cleanPath.endsWith('.jpg') || cleanPath.endsWith('.jpeg')) {
         contentType = 'image/jpeg';
       } else if (cleanPath.endsWith('.webp')) {
@@ -36,19 +37,19 @@ export async function GET(
       const match = ref.image_path.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
       if (match) {
         contentType = match[1];
-        buffer = Buffer.from(match[2], 'base64');
+        const buffer = Buffer.from(match[2], 'base64');
+        arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
       } else {
-        return new NextResponse('Invalid data url', { status: 400, headers: corsHeaders });
+        return new Response('Invalid data url', { status: 400, headers: corsHeaders });
       }
     } else {
       // Remote URL (e.g. Unsplash or Supabase Storage)
       const remoteRes = await fetch(ref.image_path);
-      const arrayBuf = await remoteRes.arrayBuffer();
-      buffer = Buffer.from(arrayBuf);
+      arrayBuffer = await remoteRes.arrayBuffer();
       contentType = remoteRes.headers.get('content-type') || 'image/jpeg';
     }
 
-    return new NextResponse(buffer, {
+    return new Response(arrayBuffer, {
       status: 200,
       headers: {
         ...corsHeaders,
@@ -57,7 +58,7 @@ export async function GET(
       },
     });
   } catch (err: any) {
-    return new NextResponse(err.message || 'Error loading image', {
+    return new Response(err.message || 'Error loading image', {
       status: 500,
       headers: corsHeaders,
     });

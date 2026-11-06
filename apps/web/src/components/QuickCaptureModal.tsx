@@ -49,6 +49,45 @@ export function QuickCaptureModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Inline category creation
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  const [isCreatingCat, setIsCreatingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatColor, setNewCatColor] = useState('#6366f1');
+  const [isSavingCat, setIsSavingCat] = useState(false);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  const handleCreateInlineCat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+
+    setIsSavingCat(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCatName.trim(), color: newCatColor }),
+      });
+
+      if (!res.ok) throw new Error('Failed to create category');
+      const d = await res.json();
+      const created: Category = d.category;
+
+      setLocalCategories((prev) => [...prev, created]);
+      setSelectedCatIds((prev) => [...prev, created.id]);
+      setNewCatName('');
+      setIsCreatingCat(false);
+      showToast(`Category "${created.name}" created and selected!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Error creating category', 'error');
+    } finally {
+      setIsSavingCat(false);
+    }
+  };
+
   // Process an image File or Blob
   const handleImageBlob = useCallback((file: File | Blob) => {
     if (!file.type.startsWith('image/')) {
@@ -219,7 +258,7 @@ export function QuickCaptureModal({
 
   if (!isOpen) return null;
 
-  const filteredCategories = categories.filter((c) =>
+  const filteredCategories = localCategories.filter((c) =>
     c.name.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
@@ -376,11 +415,59 @@ export function QuickCaptureModal({
                 <Tag className="w-3 h-3 text-zinc-400" />
                 <span>Assign Categories</span>
                 <span className="text-rose-400">*</span>
+                <span className="text-[11px] text-zinc-500 ml-1">
+                  ({selectedCatIds.length} selected)
+                </span>
               </label>
-              <span className="text-[11px] text-zinc-500">
-                {selectedCatIds.length} selected
-              </span>
+
+              {!isCreatingCat ? (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingCat(true)}
+                  className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 transition-colors"
+                >
+                  <span>+ New Category</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingCat(false)}
+                  className="text-[11px] text-zinc-500 hover:text-zinc-300"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
+
+            {/* Inline Category Creator */}
+            {isCreatingCat && (
+              <div className="p-2.5 rounded-lg bg-surface border border-indigo-500/40 space-y-2 animate-in fade-in duration-150">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="New category name..."
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    className="flex-1 px-2.5 py-1 text-xs rounded bg-surface-elevated border border-border text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                    autoFocus
+                  />
+                  <input
+                    type="color"
+                    value={newCatColor}
+                    onChange={(e) => setNewCatColor(e.target.value)}
+                    className="w-6 h-6 rounded border border-border cursor-pointer bg-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateInlineCat}
+                    disabled={isSavingCat || !newCatName.trim()}
+                    className="px-2.5 py-1 text-xs font-medium rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white"
+                  >
+                    {isSavingCat ? 'Saving...' : 'Add'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Quick search input */}
             <input

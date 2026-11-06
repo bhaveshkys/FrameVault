@@ -13,6 +13,7 @@ import {
   Search,
   Command,
   HelpCircle,
+  UploadCloud,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -46,7 +47,8 @@ export function Navbar({ onOpenCapture, onOpenSearch, onOpenShortcuts }: NavbarP
   }, []);
 
   const navLinks = [
-    { href: '/', label: 'Library', icon: Film },
+    { href: '/', label: 'Capture', icon: UploadCloud },
+    { href: '/library', label: 'Library', icon: Film },
     { href: '/favorites', label: 'Favorites', icon: Bookmark },
     { href: '/categories', label: 'Categories', icon: Layers },
     {
