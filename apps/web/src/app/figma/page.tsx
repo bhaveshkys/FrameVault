@@ -77,6 +77,8 @@ export default function FigmaSyncDashboard() {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 6000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleCopyToken = () => {

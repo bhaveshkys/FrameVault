@@ -429,62 +429,18 @@
       if (syncBtn) syncBtn.disabled = true;
       if (fetchBtn) fetchBtn.disabled = true;
       if (progressBox) progressBox.style.display = 'block';
+      if (progressText) progressText.innerText = `Synchronizing ${currentPending.length} reference(s)...`;
+      if (progressPct) progressPct.innerText = '10%';
+      if (progressBar) progressBar.style.width = '10%';
 
-      log(`Starting image processing for ${currentPending.length} reference(s)...`);
+      log(`Dispatching ${currentPending.length} reference(s) to Figma canvas...`);
 
-      const itemsWithBytes = [];
-
-      for (let i = 0; i < currentPending.length; i++) {
-        const item = currentPending[i];
-        if (progressText) progressText.innerText = `Preparing image ${i + 1}/${currentPending.length}`;
-        const pct = Math.round(((i + 1) / currentPending.length) * 50);
-        if (progressPct) progressPct.innerText = `${pct}%`;
-        if (progressBar) progressBar.style.width = `${pct}%`;
-
-        let base64 = item.image_base64 || null;
-
-        // If backend did not pre-resolve base64, fetch via CORS-enabled image endpoint
-        if (!base64 && item.image_url) {
-          try {
-            let fetchUrl = item.image_url;
-            if (fetchUrl.startsWith('/uploads/') || fetchUrl.startsWith('uploads/')) {
-              fetchUrl = `${configUrl}/api/figma/image/${item.reference_id}`;
-            } else if (fetchUrl.startsWith('/')) {
-              fetchUrl = `${configUrl}${fetchUrl}`;
-            }
-
-            log(`Fetching image for "${item.title}"...`);
-            const imgRes = await fetch(fetchUrl);
-            if (imgRes.ok) {
-              const blob = await imgRes.blob();
-              base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              log(`✓ Image ready (${Math.round(blob.size / 1024)} KB)`);
-            } else {
-              log(`⚠ Image server returned HTTP ${imgRes.status}`);
-            }
-          } catch (e) {
-            log(`⚠ Image fetch error: ${e.message}`);
-          }
-        } else if (base64) {
-          log(`✓ Image pre-loaded for "${item.title}"`);
-        }
-
-        itemsWithBytes.push({
-          ...item,
-          image_base64: base64
-        });
-      }
-
-      log('Creating category sections and cards in Figma...');
       parent.postMessage({
         pluginMessage: {
           type: 'CREATE_CARDS',
-          items: itemsWithBytes
+          items: currentPending,
+          url: configUrl,
+          token: configToken
         }
       }, '*');
     }
@@ -521,57 +477,45 @@
         handleFetchError(msg.error);
       }
 
-      if (msg.type === 'ITEM_PROCESSED') {
-        // Post sync result back to FrameVault backend via sandbox
-        parent.postMessage({
-          pluginMessage: {
-            type: 'POST_SYNC_STATUS',
-            url: configUrl,
-            token: configToken,
-            payload: {
-              reference_id: msg.reference_id,
-              category_id: msg.category_id,
-              figma_file_key: 'FRAMEVAULT_REFERENCE_BOARD',
-              figma_node_id: msg.figma_node_id || 'unknown',
-              status: msg.status,
-              last_error: msg.last_error || null
-            }
-          }
-        }, '*');
+      if (msg.type === 'CARD_CREATED') {
+        processedCount = msg.current;
+        const syncedStat = document.getElementById('stat-synced');
+        if (syncedStat) syncedStat.innerText = processedCount;
 
-        if (msg.status === 'synced') {
-          processedCount++;
-          const syncedStat = document.getElementById('stat-synced');
-          if (syncedStat) syncedStat.innerText = processedCount;
-          log(`✓ Card created (Node: ${msg.figma_node_id})`);
-        } else {
-          failedCount++;
-          const failedStat = document.getElementById('stat-failed');
-          if (failedStat) failedStat.innerText = failedCount;
-          log(`✕ Failed: ${msg.last_error}`);
-        }
-
-        // Update progress
-        const total = currentPending.length;
-        const finished = processedCount + failedCount;
-        const pct = Math.round(50 + (finished / total) * 50);
+        const total = msg.total || 1;
+        const pct = Math.round((msg.current / total) * 100);
         const progressBar = document.getElementById('progress-bar');
         const progressPct = document.getElementById('progress-pct');
+        const progressText = document.getElementById('progress-text');
 
         if (progressBar) progressBar.style.width = `${pct}%`;
         if (progressPct) progressPct.innerText = `${pct}%`;
-
-        if (finished >= total) {
-          log('🎉 All reference cards synchronized successfully!');
-          const syncBtn = document.getElementById('btn-sync');
-          const fetchBtn = document.getElementById('btn-fetch');
-          if (syncBtn) syncBtn.disabled = false;
-          if (fetchBtn) fetchBtn.disabled = false;
-          setTimeout(() => {
-            fetchPendingReferences();
-          }, 1000);
-        }
+        if (progressText) progressText.innerText = `Created ${msg.current}/${total}: ${msg.title}`;
+        log(`✓ Created card: "${msg.title}"`);
       }
+
+      if (msg.type === 'ALL_SYNCED') {
+        log(`🎉 Successfully synchronized ${msg.count} reference card(s)!`);
+        const syncBtn = document.getElementById('btn-sync');
+        const fetchBtn = document.getElementById('btn-fetch');
+        const progressBox = document.getElementById('sync-progress-box');
+
+        if (syncBtn) syncBtn.disabled = false;
+        if (fetchBtn) fetchBtn.disabled = false;
+        setTimeout(() => {
+          if (progressBox) progressBox.style.display = 'none';
+          fetchPendingReferences();
+        }, 1500);
+      }
+
+      if (msg.type === 'CREATE_CARDS_ERROR') {
+        log(`✕ Error creating cards: ${msg.error}`);
+        const syncBtn = document.getElementById('btn-sync');
+        const fetchBtn = document.getElementById('btn-fetch');
+        if (syncBtn) syncBtn.disabled = false;
+        if (fetchBtn) fetchBtn.disabled = false;
+      }
+    };
     };
 
     // Request stored settings from Figma clientStorage as soon as iframe mounts

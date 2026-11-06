@@ -10,7 +10,9 @@ figma.showUI(__html__, {
 // Immediately send stored settings on startup
 async function initPlugin() {
   try {
-    const savedUrl = (await figma.clientStorage.getAsync('fv_api_url')) || 'http://localhost:3000';
+    const savedUrl =
+      (await figma.clientStorage.getAsync('fv_api_url')) ||
+      'https://framevault.bhaveshsharma.com';
     const savedToken =
       (await figma.clientStorage.getAsync('fv_api_token')) ||
       'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
@@ -34,6 +36,7 @@ interface PendingSyncPayload {
   category_color?: string | null;
   title: string;
   source_url?: string | null;
+  image_url?: string | null;
   notes?: string | null;
   image_base64?: string | null;
   imageBytes?: number[] | Uint8Array | null;
@@ -54,28 +57,6 @@ function hexToRgb(hex?: string | null): RGB {
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
   return { r: r / 255, g: g / 255, b: b / 255 };
-}
-
-// Convert image payload to Uint8Array
-function getUint8ArrayFromItem(item: PendingSyncPayload): Uint8Array | null {
-  if (item.image_base64) {
-    try {
-      const clean = item.image_base64.replace(/^data:image\/[a-zA-Z0-9-.+]+;base64,/, '').trim();
-      const binary = atob(clean);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes;
-    } catch (e) {
-      console.error('Failed to decode base64 in sandbox:', e);
-    }
-  }
-  if (item.imageBytes && item.imageBytes.length > 0) {
-    return new Uint8Array(item.imageBytes);
-  }
-  return null;
 }
 
 // Helper to find or create the target page
@@ -133,7 +114,9 @@ function getOrCreateCategoryContainer(
 // Main message router
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'GET_SETTINGS') {
-    const savedUrl = (await figma.clientStorage.getAsync('fv_api_url')) || 'http://localhost:3000';
+    const savedUrl =
+      (await figma.clientStorage.getAsync('fv_api_url')) ||
+      'https://framevault.bhaveshsharma.com';
     const savedToken =
       (await figma.clientStorage.getAsync('fv_api_token')) ||
       'fv_live_7a9f8b2c4e1d3a5e6f8b0c2d4e6f8a0b';
@@ -165,15 +148,7 @@ figma.ui.onmessage = async (msg) => {
     return;
   }
 
-  if (msg.type === 'CHECK_CONNECTION') {
-    figma.ui.postMessage({
-      type: 'CONNECTION_CHECKED',
-      documentName: figma.root.name,
-    });
-    return;
-  }
-
-  // Network fetch handled in Figma plugin sandbox (bypasses iframe DOM mixed content)
+  // Network fetch handled in Figma plugin sandbox
   if (msg.type === 'FETCH_PENDING') {
     try {
       const targetUrl = (msg.url || '').replace(/\/+$/, '');
@@ -181,7 +156,7 @@ figma.ui.onmessage = async (msg) => {
       const response = await fetch(`${targetUrl}/api/figma/pending`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -209,236 +184,259 @@ figma.ui.onmessage = async (msg) => {
     return;
   }
 
-  if (msg.type === 'POST_SYNC_STATUS') {
-    try {
-      const targetUrl = (msg.url || '').replace(/\/+$/, '');
-      const token = msg.token || '';
-      await fetch(`${targetUrl}/api/figma/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(msg.payload),
-      });
-    } catch (e) {
-      console.error('Failed to post sync status from sandbox:', e);
-    }
-    return;
-  }
-
+  // Create cards on Figma Canvas
   if (msg.type === 'CREATE_CARDS') {
     const items: PendingSyncPayload[] = msg.items || [];
-    const targetPage = getOrCreateReferencePage();
-    figma.currentPage = targetPage;
+    const targetUrl = (msg.url || '').replace(/\/+$/, '');
+    const token = msg.token || '';
 
-    // Pre-load required fonts
-    await Promise.all([
-      figma.loadFontAsync({ family: 'Inter', style: 'Regular' }),
-      figma.loadFontAsync({ family: 'Inter', style: 'Medium' }),
-      figma.loadFontAsync({ family: 'Inter', style: 'Bold' }),
-    ]).catch(async () => {
-      await figma.loadFontAsync({ family: 'Roboto', style: 'Regular' });
-    });
-
-    const categoryGroups: { [catName: string]: PendingSyncPayload[] } = {};
-    for (const item of items) {
-      if (!categoryGroups[item.category_name]) {
-        categoryGroups[item.category_name] = [];
-      }
-      categoryGroups[item.category_name].push(item);
+    if (items.length === 0) {
+      figma.ui.postMessage({ type: 'ALL_SYNCED', count: 0 });
+      return;
     }
 
-    let catIndex = 0;
-    const createdNodes: SceneNode[] = [];
+    try {
+      const targetPage = getOrCreateReferencePage();
+      figma.currentPage = targetPage;
 
-    for (const [categoryName, catItems] of Object.entries(categoryGroups)) {
-      const container = getOrCreateCategoryContainer(targetPage, categoryName, catIndex);
-      catIndex++;
+      // Safe font loading
+      let fontRegular = { family: 'Inter', style: 'Regular' };
+      let fontBold = { family: 'Inter', style: 'Bold' };
 
-      const cardsPerRow = 2;
-      const cardWidth = 360;
-      const cardSpacing = 24;
-      const startX = 32;
-      const startY = 80;
+      try {
+        await figma.loadFontAsync(fontRegular);
+        await figma.loadFontAsync(fontBold);
+      } catch {
+        try {
+          fontRegular = { family: 'Roboto', style: 'Regular' };
+          fontBold = { family: 'Roboto', style: 'Bold' };
+          await figma.loadFontAsync(fontRegular);
+          await figma.loadFontAsync(fontBold);
+        } catch (fontErr) {
+          console.warn('Using system fallback font', fontErr);
+        }
+      }
 
-      for (let i = 0; i < catItems.length; i++) {
-        const item = catItems[i];
-        const syncKey = `${item.reference_id}:${item.category_id}`;
+      const categoryGroups: { [catName: string]: PendingSyncPayload[] } = {};
+      for (const item of items) {
+        const cat = item.category_name || 'Uncategorized';
+        if (!categoryGroups[cat]) {
+          categoryGroups[cat] = [];
+        }
+        categoryGroups[cat].push(item);
+      }
 
-        // 1. Duplicate check: look for card with this sync_key
-        const existingNode = container.children.find(
-          (c) => c.getPluginData('framevault:sync_key') === syncKey
-        ) as FrameNode | undefined;
+      let catIndex = 0;
+      let totalSynced = 0;
+      const createdNodes: SceneNode[] = [];
 
-        if (existingNode) {
-          // If existing card is missing its image still, attach it now
-          const hasImage = existingNode.children && existingNode.children.some((c) => c.name === 'Screenshot Still');
-          const imageUint8 = getUint8ArrayFromItem(item);
+      for (const [categoryName, catItems] of Object.entries(categoryGroups)) {
+        const container = getOrCreateCategoryContainer(targetPage, categoryName, catIndex);
+        catIndex++;
 
-          if (!hasImage && imageUint8 && imageUint8.length > 0) {
-            try {
-              const figmaImg = figma.createImage(imageUint8);
-              const imgRect = figma.createRectangle();
-              imgRect.name = 'Screenshot Still';
-              imgRect.resize(332, 186);
-              imgRect.cornerRadius = 6;
+        const cardsPerRow = 2;
+        const cardWidth = 360;
+        const cardSpacing = 24;
+        const startX = 32;
+        const startY = 80;
+
+        for (let i = 0; i < catItems.length; i++) {
+          const item = catItems[i];
+          const syncKey = `${item.reference_id}:${item.category_id}`;
+
+          // Duplicate check
+          const existingNode = container.children.find(
+            (c) => c.getPluginData('framevault:sync_key') === syncKey
+          ) as FrameNode | undefined;
+
+          let cardNode: FrameNode;
+
+          if (existingNode) {
+            cardNode = existingNode;
+          } else {
+            const col = i % cardsPerRow;
+            const row = Math.floor(i / cardsPerRow);
+            const posX = startX + col * (cardWidth + cardSpacing);
+            const posY = startY + row * 440;
+
+            cardNode = figma.createFrame();
+            cardNode.name = `Frame: ${item.title}`;
+            cardNode.x = posX;
+            cardNode.y = posY;
+            cardNode.resize(cardWidth, 400);
+
+            // Styling
+            cardNode.fills = [{ type: 'SOLID', color: { r: 0.08, g: 0.09, b: 0.12 } }];
+            cardNode.strokes = [{ type: 'SOLID', color: { r: 0.18, g: 0.2, b: 0.25 } }];
+            cardNode.strokeWeight = 1;
+            cardNode.cornerRadius = 10;
+            cardNode.layoutMode = 'VERTICAL';
+            cardNode.primaryAxisSizingMode = 'AUTO';
+            cardNode.counterAxisSizingMode = 'FIXED';
+            cardNode.paddingTop = 14;
+            cardNode.paddingBottom = 16;
+            cardNode.paddingLeft = 14;
+            cardNode.paddingRight = 14;
+            cardNode.itemSpacing = 10;
+
+            // Image placeholder rect
+            const imgRect = figma.createRectangle();
+            imgRect.name = 'Screenshot Still';
+            imgRect.resize(332, 186);
+            imgRect.cornerRadius = 6;
+            imgRect.fills = [{ type: 'SOLID', color: { r: 0.12, g: 0.14, b: 0.18 } }];
+            cardNode.appendChild(imgRect);
+
+            // Category tag
+            const tagFrame = figma.createFrame();
+            tagFrame.name = 'Category Tag';
+            tagFrame.layoutMode = 'HORIZONTAL';
+            tagFrame.primaryAxisSizingMode = 'AUTO';
+            tagFrame.counterAxisSizingMode = 'AUTO';
+            tagFrame.paddingTop = 3;
+            tagFrame.paddingBottom = 3;
+            tagFrame.paddingLeft = 8;
+            tagFrame.paddingRight = 8;
+            tagFrame.cornerRadius = 4;
+            tagFrame.fills = [{ type: 'SOLID', color: { r: 0.14, g: 0.16, b: 0.21 } }];
+
+            const tagText = figma.createText();
+            tagText.fontName = fontBold;
+            tagText.characters = (item.category_name || 'UNCATEGORIZED').toUpperCase();
+            tagText.fontSize = 9;
+            tagText.fills = [{ type: 'SOLID', color: hexToRgb(item.category_color) }];
+            tagFrame.appendChild(tagText);
+            cardNode.appendChild(tagFrame);
+
+            // Title
+            const titleText = figma.createText();
+            titleText.fontName = fontBold;
+            titleText.characters = item.title;
+            titleText.fontSize = 13;
+            titleText.fills = [{ type: 'SOLID', color: { r: 0.94, g: 0.95, b: 0.97 } }];
+            titleText.layoutAlign = 'STRETCH';
+            cardNode.appendChild(titleText);
+
+            // Source URL
+            if (item.source_url) {
+              const sourceText = figma.createText();
+              sourceText.fontName = fontRegular;
+              sourceText.characters = `Source: ${item.source_url}`;
+              sourceText.fontSize = 10;
+              sourceText.fills = [{ type: 'SOLID', color: { r: 0.45, g: 0.55, b: 0.95 } }];
+              sourceText.layoutAlign = 'STRETCH';
+              try {
+                sourceText.setRangeHyperlink(0, sourceText.characters.length, {
+                  type: 'URL',
+                  value: item.source_url,
+                });
+              } catch (_) {}
+              cardNode.appendChild(sourceText);
+            }
+
+            // Notes
+            if (item.notes) {
+              const notesText = figma.createText();
+              notesText.fontName = fontRegular;
+              notesText.characters = `"${item.notes}"`;
+              notesText.fontSize = 11;
+              notesText.fills = [{ type: 'SOLID', color: { r: 0.65, g: 0.68, b: 0.74 } }];
+              notesText.layoutAlign = 'STRETCH';
+              cardNode.appendChild(notesText);
+            }
+
+            // Plugin metadata
+            cardNode.setPluginData('framevault:sync_key', syncKey);
+            cardNode.setPluginData('framevault:reference_id', item.reference_id);
+            cardNode.setPluginData('framevault:category_id', item.category_id);
+
+            container.appendChild(cardNode);
+            createdNodes.push(cardNode);
+          }
+
+          // Asynchronously attach or update image via native createImageAsync
+          const imgRect = cardNode.children.find((c) => c.name === 'Screenshot Still') as
+            | RectangleNode
+            | undefined;
+
+          if (imgRect) {
+            let imgHandle: Image | null = null;
+            if (item.image_base64) {
+              try {
+                imgHandle = await figma.createImageAsync(item.image_base64);
+              } catch (e) {
+                console.warn('Base64 image creation fallback:', e);
+              }
+            }
+
+            if (!imgHandle && item.image_url) {
+              try {
+                const fullUrl = item.image_url.startsWith('http')
+                  ? item.image_url
+                  : `${targetUrl}${item.image_url.startsWith('/') ? '' : '/'}${item.image_url}`;
+                imgHandle = await figma.createImageAsync(fullUrl);
+              } catch (e) {
+                console.warn('URL image creation fallback:', e);
+              }
+            }
+
+            if (imgHandle) {
               imgRect.fills = [
                 {
                   type: 'IMAGE',
                   scaleMode: 'FILL',
-                  imageHash: figmaImg.hash,
+                  imageHash: imgHandle.hash,
                 },
               ];
-              // Insert image at the top of the card
-              existingNode.insertChild(0, imgRect);
-            } catch (fillErr) {
-              console.error('Error attaching image to existing card:', fillErr);
             }
           }
 
-          figma.ui.postMessage({
-            type: 'ITEM_PROCESSED',
-            reference_id: item.reference_id,
-            category_id: item.category_id,
-            figma_node_id: existingNode.id,
-            status: 'synced',
-            message: 'Card updated.',
-          });
-          continue;
-        }
-
-        try {
-          const col = i % cardsPerRow;
-          const row = Math.floor(i / cardsPerRow);
-          const posX = startX + col * (cardWidth + cardSpacing);
-          const posY = startY + row * 440;
-
-          // 2. Create card frame (Auto-layout)
-          const card = figma.createFrame();
-          card.name = `Frame: ${item.title}`;
-          card.x = posX;
-          card.y = posY;
-          card.resize(cardWidth, 400);
-
-          // Card Dark Visual Styling
-          card.fills = [{ type: 'SOLID', color: { r: 0.08, g: 0.09, b: 0.12 } }];
-          card.strokes = [{ type: 'SOLID', color: { r: 0.18, g: 0.20, b: 0.25 } }];
-          card.strokeWeight = 1;
-          card.cornerRadius = 10;
-          card.layoutMode = 'VERTICAL';
-          card.primaryAxisSizingMode = 'AUTO';
-          card.counterAxisSizingMode = 'FIXED';
-          card.paddingTop = 14;
-          card.paddingBottom = 16;
-          card.paddingLeft = 14;
-          card.paddingRight = 14;
-          card.itemSpacing = 10;
-
-          // 3. Create Screenshot Image Fill
-          const imageUint8 = getUint8ArrayFromItem(item);
-          if (imageUint8 && imageUint8.length > 0) {
-            const figmaImg = figma.createImage(imageUint8);
-
-            const imgRect = figma.createRectangle();
-            imgRect.name = 'Screenshot Still';
-            imgRect.resize(332, 186); // 16:9 cinema ratio
-            imgRect.cornerRadius = 6;
-            imgRect.fills = [
-              {
-                type: 'IMAGE',
-                scaleMode: 'FILL',
-                imageHash: figmaImg.hash,
+          // Directly update backend sync status
+          try {
+            await fetch(`${targetUrl}/api/figma/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
               },
-            ];
-            card.appendChild(imgRect);
-          }
-
-          // 4. Category Tag Badge
-          const tagFrame = figma.createFrame();
-          tagFrame.name = 'Category Tag';
-          tagFrame.layoutMode = 'HORIZONTAL';
-          tagFrame.primaryAxisSizingMode = 'AUTO';
-          tagFrame.counterAxisSizingMode = 'AUTO';
-          tagFrame.paddingTop = 3;
-          tagFrame.paddingBottom = 3;
-          tagFrame.paddingLeft = 8;
-          tagFrame.paddingRight = 8;
-          tagFrame.cornerRadius = 4;
-          tagFrame.fills = [{ type: 'SOLID', color: { r: 0.14, g: 0.16, b: 0.21 } }];
-
-          const tagText = figma.createText();
-          tagText.characters = item.category_name.toUpperCase();
-          tagText.fontSize = 9;
-          tagText.fontName = { family: 'Inter', style: 'Bold' };
-          tagText.fills = [{ type: 'SOLID', color: hexToRgb(item.category_color) }];
-          tagFrame.appendChild(tagText);
-          card.appendChild(tagFrame);
-
-          // 5. Title Text
-          const titleText = figma.createText();
-          titleText.characters = item.title;
-          titleText.fontSize = 13;
-          titleText.fontName = { family: 'Inter', style: 'Bold' };
-          titleText.fills = [{ type: 'SOLID', color: { r: 0.94, g: 0.95, b: 0.97 } }];
-          titleText.layoutAlign = 'STRETCH';
-          card.appendChild(titleText);
-
-          // 6. Source Link
-          if (item.source_url) {
-            const sourceText = figma.createText();
-            sourceText.characters = `Source: ${item.source_url}`;
-            sourceText.fontSize = 10;
-            sourceText.fontName = { family: 'Inter', style: 'Regular' };
-            sourceText.fills = [{ type: 'SOLID', color: { r: 0.45, g: 0.55, b: 0.95 } }];
-            sourceText.layoutAlign = 'STRETCH';
-            sourceText.setRangeHyperlink(0, sourceText.characters.length, {
-              type: 'URL',
-              value: item.source_url,
+              body: JSON.stringify({
+                reference_id: item.reference_id,
+                category_id: item.category_id,
+                figma_file_key: 'FRAMEVAULT_REFERENCE_BOARD',
+                figma_node_id: cardNode.id,
+                status: 'synced',
+                last_error: null,
+              }),
             });
-            card.appendChild(sourceText);
+          } catch (backendErr) {
+            console.error('Failed to update sync status on backend:', backendErr);
           }
 
-          // 7. Research Notes
-          if (item.notes) {
-            const notesText = figma.createText();
-            notesText.characters = `"${item.notes}"`;
-            notesText.fontSize = 11;
-            notesText.fontName = { family: 'Inter', style: 'Regular' };
-            notesText.fills = [{ type: 'SOLID', color: { r: 0.65, g: 0.68, b: 0.74 } }];
-            notesText.layoutAlign = 'STRETCH';
-            card.appendChild(notesText);
-          }
-
-          // 8. Attach Stored Metadata to prevent future duplicates
-          card.setPluginData('framevault:sync_key', syncKey);
-          card.setPluginData('framevault:reference_id', item.reference_id);
-          card.setPluginData('framevault:category_id', item.category_id);
-
-          container.appendChild(card);
-          createdNodes.push(card);
-
+          totalSynced++;
           figma.ui.postMessage({
-            type: 'ITEM_PROCESSED',
-            reference_id: item.reference_id,
-            category_id: item.category_id,
-            figma_node_id: card.id,
-            status: 'synced',
-          });
-        } catch (itemError: any) {
-          figma.ui.postMessage({
-            type: 'ITEM_PROCESSED',
-            reference_id: item.reference_id,
-            category_id: item.category_id,
-            status: 'failed',
-            last_error: itemError.message || 'Error generating card in Figma',
+            type: 'CARD_CREATED',
+            title: item.title,
+            nodeId: cardNode.id,
+            current: totalSynced,
+            total: items.length,
           });
         }
       }
-    }
 
-    if (createdNodes.length > 0) {
-      figma.viewport.scrollAndZoomIntoView(createdNodes);
+      if (createdNodes.length > 0) {
+        figma.viewport.scrollAndZoomIntoView(createdNodes);
+      }
+
+      figma.ui.postMessage({
+        type: 'ALL_SYNCED',
+        count: totalSynced,
+      });
+    } catch (globalErr: any) {
+      console.error('CREATE_CARDS error:', globalErr);
+      figma.ui.postMessage({
+        type: 'CREATE_CARDS_ERROR',
+        error: globalErr.message || 'Error creating cards on canvas',
+      });
     }
   }
 };
