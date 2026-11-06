@@ -60,8 +60,13 @@ function hexToRgb(hex?: string | null): RGB {
 }
 
 // Helper to find or create the target page
-function getOrCreateReferencePage(): PageNode {
+async function getOrCreateReferencePage(): Promise<PageNode> {
   const pageName = 'FrameVault References';
+  try {
+    await figma.loadAllPagesAsync();
+  } catch (e) {
+    // Fallback if already loaded or not supported
+  }
   let targetPage = figma.root.children.find((p) => p.name === pageName) as PageNode | undefined;
   if (!targetPage) {
     targetPage = figma.createPage();
@@ -196,8 +201,15 @@ figma.ui.onmessage = async (msg) => {
     }
 
     try {
-      const targetPage = getOrCreateReferencePage();
-      figma.currentPage = targetPage;
+      const targetPage = await getOrCreateReferencePage();
+      try {
+        await figma.setCurrentPageAsync(targetPage);
+      } catch (pageErr) {
+        // Fallback for older Figma desktop runtimes
+        try {
+          (figma as any).currentPage = targetPage;
+        } catch (_) {}
+      }
 
       // Safe font loading
       let fontRegular = { family: 'Inter', style: 'Regular' };
